@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>图片宫格图生成器</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 40px 20px;
+      font-family: "Segoe UI", Roboto, sans-serif;
+      background-color: #f8f9fa;
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-weight: 600;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    input[type="file"],
+    input[type="number"] {
+      display: block;
+      margin: 0 auto 20px;
+    }
+
+    #grid-wrapper {
+      padding: 2px;
+      background-color: white; 
+    }
+
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+    }
+
+    #grid img {
+      width: 100%;
+      height: auto;
+      border-radius: 2px;
+      object-fit: cover;
+      transition: transform 0.2s ease;
+      border: 1px solid #000;
+    }
+
+    #grid img:hover {
+      transform: scale(1.03);
+    }
+
+    button {
+      margin-top: 30px;
+      padding: 12px 24px;
+      background-color: #007bff;
+      border: none;
+      color: white;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .controls {
+      margin-bottom: 20px;
+    }
+
+    .controls label {
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>上传图片生成宫格图</h1>
+
+    <input type="file" id="fileInput" multiple accept="image/*">
+
+    <div class="controls">
+      <label for="columnsInput">列数：</label>
+      <input type="number" id="columnsInput" min="1" max="10" value="3" style="width: 60px;">
+    </div>
+
+    <div id="grid-wrapper">
+      <div id="grid"></div>
+    </div>
+
+    <button id="downloadBtn">下载高清宫格图</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const grid = document.getElementById('grid');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const gridWrapper = document.getElementById('grid-wrapper');
+    const columnsInput = document.getElementById('columnsInput');
+
+    fileInput.addEventListener('change', (e) => {
+      grid.innerHTML = '';
+      const files = Array.from(e.target.files);
+
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          const img = document.createElement('img');
+          img.src = evt.target.result;
+          grid.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    columnsInput.addEventListener('input', () => {
+      const count = parseInt(columnsInput.value, 10);
+      grid.style.gridTemplateColumns = `repeat(${count}, 1fr)`;
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      html2canvas(gridWrapper, { scale: 2 }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'grid.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
+    });
+  </script>
+
+</body>
+</html>
