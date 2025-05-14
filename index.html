@@ -123,24 +123,7 @@
             ctx.shadowOffsetX = 6;
             ctx.shadowOffsetY = 6;
 
-            const imgRatio = img.width / img.height;
-            const boxRatio = thumbWidth / thumbHeight;
-
-            let drawWidth, drawHeight;
-            if (imgRatio > boxRatio) {
-              // 图片更宽
-              drawWidth = thumbWidth;
-              drawHeight = thumbWidth / imgRatio;
-            } else {
-              // 图片更高
-              drawHeight = thumbHeight;
-              drawWidth = thumbHeight * imgRatio;
-            }
-
-            const offsetX = x + (thumbWidth - drawWidth) / 2;
-            const offsetY = y + (thumbHeight - drawHeight) / 2;
-
-            ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+            ctx.drawImage(img, x, y, thumbWidth, thumbHeight);
             ctx.restore();
 
             ctx.strokeStyle = "#210F16";
