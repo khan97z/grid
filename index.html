@@ -1,145 +1,181 @@
 <!DOCTYPE html>
-<html lang="zh">
-<head>
-  <meta charset="UTF-8">
-  <title>图片宫格图生成器</title>
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>缩略图拼接</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: #f8f9fa;
+      }
+      canvas {
+        margin: 30px auto;
+        border: 1px solid #ccc;
+        max-width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container mt-5">
+      <h2 class="mb-4">生成缩略图</h2>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="images" class="form-label">上传截图:</label>
+          <input
+            type="file"
+            class="form-control"
+            id="images"
+            multiple
+            accept="image/*"
+          />
+        </div>
+        <div class="col-md-6">
+          <label for="columns" class="form-label">列数:</label>
+          <input
+            type="number"
+            class="form-control"
+            id="columns"
+            value="4"
+            min="1"
+          />
+        </div>
+        <div class="col-md-6">
+          <label for="totalWidth" class="form-label">总宽度(px):</label>
+          <input
+            type="number"
+            class="form-control"
+            id="totalWidth"
+            value="1024"
+            min="100"
+          />
+        </div>
+        <div class="col-md-6">
+          <label for="gap" class="form-label">间距(px):</label>
+          <input
+            type="number"
+            class="form-control"
+            id="gap"
+            value="10"
+            min="0"
+          />
+        </div>
+      </div>
 
-    body {
-      margin: 0;
-      padding: 40px 20px;
-      font-family: "Segoe UI", Roboto, sans-serif;
-      background-color: #f8f9fa;
-      color: #333;
-    }
+      <div class="mt-4 d-flex gap-3">
+        <!-- <button class="btn btn-secondary" onclick="generateGrid()">
+          生成缩略图
+        </button> -->
+        <button class="btn btn-primary" onclick="exportImage()">
+          导出缩略图
+        </button>
+      </div>
 
-    h1 {
-      text-align: center;
-      margin-bottom: 30px;
-      font-weight: 600;
-    }
-
-    .container {
-      max-width: 1600px;
-      margin: 0 auto;
-      text-align: center;
-    }
-
-    input[type="file"],
-    input[type="number"] {
-      display: block;
-      margin: 0 auto 20px;
-    }
-
-    #grid-wrapper {
-      padding: 2px;
-      background-color: white; 
-    }
-
-    #grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 2px;
-    }
-
-    #grid img {
-      width: 100%;
-      height: auto;
-      border-radius: 2px;
-      object-fit: cover;
-      transition: transform 0.2s ease;
-      border: 1px solid #000;
-    }
-
-    #grid img:hover {
-      transform: scale(1.03);
-    }
-
-    button {
-      margin-top: 30px;
-      padding: 12px 24px;
-      background-color: #007bff;
-      border: none;
-      color: white;
-      font-size: 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-
-    button:hover {
-      background-color: #0056b3;
-    }
-
-    .controls {
-      margin-bottom: 20px;
-    }
-
-    .controls label {
-      margin-right: 10px;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="container">
-    <h1>上传图片生成宫格图</h1>
-
-    <input type="file" id="fileInput" multiple accept="image/*">
-
-    <div class="controls">
-      <label for="columnsInput">列数：</label>
-      <input type="number" id="columnsInput" min="1" max="10" value="3" style="width: 60px;">
+      <canvas id="canvas" style="display: none;"></canvas>
     </div>
 
-    <div id="grid-wrapper">
-      <div id="grid"></div>
-    </div>
+    <script>
+      async function generateGrid() {
+        const files = Array.from(document.getElementById("images").files);
+        const columns = parseInt(document.getElementById("columns").value, 10);
+        const totalWidth = parseInt(
+          document.getElementById("totalWidth").value,
+          10
+        );
+        const gap = parseInt(document.getElementById("gap").value, 10);
+        const outerPadding = gap;
 
-    <button id="downloadBtn">下载高清宫格图</button>
-  </div>
+        const images = await Promise.all(
+          files.map((file) => loadImage(URL.createObjectURL(file), file.name))
+        );
 
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+        const thumbWidth =
+          (totalWidth - (columns - 1) * gap - 2 * outerPadding) / columns;
+        const thumbHeight = thumbWidth * 0.56; // 16:9 比例
 
-  <script>
-    const fileInput = document.getElementById('fileInput');
-    const grid = document.getElementById('grid');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const gridWrapper = document.getElementById('grid-wrapper');
-    const columnsInput = document.getElementById('columnsInput');
+        const rows = Math.ceil(images.length / columns);
+        const totalHeight =
+          rows * thumbHeight + (rows - 1) * gap + 2 * outerPadding;
 
-    fileInput.addEventListener('change', (e) => {
-      grid.innerHTML = '';
-      const files = Array.from(e.target.files);
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = totalWidth;
+        canvas.height = totalHeight;
 
-      files.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-          const img = document.createElement('img');
-          img.src = evt.target.result;
-          grid.appendChild(img);
-        };
-        reader.readAsDataURL(file);
-      });
-    });
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    columnsInput.addEventListener('input', () => {
-      const count = parseInt(columnsInput.value, 10);
-      grid.style.gridTemplateColumns = `repeat(${count}, 1fr)`;
-    });
+        let y = outerPadding;
+        for (let r = 0; r < rows; r++) {
+          let x = outerPadding;
+          for (let c = 0; c < columns; c++) {
+            const idx = r * columns + c;
+            if (idx >= images.length) break;
 
-    downloadBtn.addEventListener('click', () => {
-      html2canvas(gridWrapper, { scale: 2 }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = 'grid.png';
-        link.href = canvas.toDataURL('image/png');
+            const { img, name } = images[idx];
+
+            ctx.save();
+            ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+            ctx.shadowBlur = 3;
+            ctx.shadowOffsetX = 4;
+            ctx.shadowOffsetY = 4;
+
+            ctx.drawImage(img, x, y, thumbWidth, thumbHeight);
+            ctx.restore();
+
+            ctx.strokeStyle = "#210F16";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, y, thumbWidth, thumbHeight);
+
+            const timestamp = parseTimestamp(name);
+            if (timestamp) {
+              ctx.font = "bold 12px sans-serif";
+              ctx.textAlign = "center";
+              ctx.textBaseline = "bottom";
+              const textX = x + thumbWidth / 2;
+              const textY = y + thumbHeight - 6;
+
+              ctx.lineWidth = 4;
+              ctx.strokeStyle = "white";
+              ctx.strokeText(timestamp, textX, textY);
+
+              ctx.fillStyle = "black";
+              ctx.fillText(timestamp, textX, textY);
+            }
+
+            x += thumbWidth + gap;
+          }
+          y += thumbHeight + gap;
+        }
+      }
+
+      function loadImage(src, name) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve({ img, name });
+          img.onerror = reject;
+          img.src = src;
+        });
+      }
+
+      function parseTimestamp(filename) {
+        const match = filename.match(/(\d{2})-(\d{2})-(\d{2})\.(\d{3})/);
+        if (!match) return "";
+        const [, h, m, s, ms] = match;
+        return `${h}:${m}:${s}:${ms}`;
+      }
+
+      async function exportImage() {
+        await generateGrid();
+        const canvas = document.getElementById("canvas");
+        const link = document.createElement("a");
+        link.download = "缩略图拼接.png";
+        link.href = canvas.toDataURL("image/png");
         link.click();
-      });
-    });
-  </script>
-
-</body>
+      }
+    </script>
+  </body>
 </html>
