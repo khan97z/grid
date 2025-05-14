@@ -65,6 +65,10 @@
         </div>
       </div>
 
+      <div id="alertBox" class="alert alert-warning d-none mt-3" role="alert">
+        请先上传至少一张图片！
+      </div>
+
       <div class="mt-4 d-flex gap-3">
         <!-- <button class="btn btn-secondary" onclick="generateGrid()">
           生成缩略图
@@ -80,6 +84,15 @@
     <script>
       async function generateGrid() {
         const files = Array.from(document.getElementById("images").files);
+        const alertBox = document.getElementById("alertBox");
+
+         if (files.length === 0) {
+            alertBox.classList.remove("d-none");
+            return;
+          } else {
+            alertBox.classList.add("d-none");
+          }
+        
         const columns = parseInt(document.getElementById("columns").value, 10);
         const totalWidth = parseInt(
           document.getElementById("totalWidth").value,
