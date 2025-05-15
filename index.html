@@ -21,7 +21,7 @@
   </head>
   <body>
     <div class="container mt-5">
-      <h2 class="mb-4">生成缩略图</h2>
+      <h2 class="mb-4">生成缩略图（自动适配图片比例）</h2>
       <div class="row g-3">
         <div class="col-md-6">
           <label for="images" class="form-label">上传截图:</label>
@@ -66,9 +66,6 @@
       </div>
 
       <div class="mt-4 d-flex gap-3">
-        <!-- <button class="btn btn-secondary" onclick="generateGrid()">
-          生成缩略图
-        </button> -->
         <button class="btn btn-primary" onclick="exportImage()">
           导出缩略图
         </button>
@@ -88,17 +85,31 @@
         const gap = parseInt(document.getElementById("gap").value, 10);
         const outerPadding = gap;
 
-        const images = await Promise.all(
-          files.map((file) => loadImage(URL.createObjectURL(file), file.name))
-        );
-
+        // 每列缩略图宽度
         const thumbWidth =
           (totalWidth - (columns - 1) * gap - 2 * outerPadding) / columns;
-        const thumbHeight = thumbWidth * 0.56; // 16:9 比例
+
+        // 加载图片并获取宽高比
+        const images = await Promise.all(
+          files.map((file) =>
+            loadImage(URL.createObjectURL(file), file.name).then(
+              ({ img, name }) => ({
+                img,
+                name,
+                aspectRatio: img.width / img.height,
+              })
+            )
+          )
+        );
+
+        // 计算每张图片对应的缩略图高度
+        const thumbHeights = images.map((i) => thumbWidth / i.aspectRatio);
+        const avgThumbHeight =
+          thumbHeights.reduce((a, b) => a + b, 0) / thumbHeights.length;
 
         const rows = Math.ceil(images.length / columns);
         const totalHeight =
-          rows * thumbHeight + (rows - 1) * gap + 2 * outerPadding;
+          rows * avgThumbHeight + (rows - 1) * gap + 2 * outerPadding;
 
         const canvas = document.getElementById("canvas");
         const ctx = canvas.getContext("2d");
@@ -109,36 +120,45 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         let y = outerPadding;
+        let idx = 0;
+
         for (let r = 0; r < rows; r++) {
           let x = outerPadding;
           for (let c = 0; c < columns; c++) {
-            const idx = r * columns + c;
             if (idx >= images.length) break;
 
-            const { img, name } = images[idx];
+            const { img, name, aspectRatio } = images[idx];
+            const thumbHeight = thumbWidth / aspectRatio;
 
+            // 加阴影绘图
             ctx.save();
             ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
             ctx.shadowBlur = 4;
             ctx.shadowOffsetX = 6;
             ctx.shadowOffsetY = 6;
-
             ctx.drawImage(img, x, y, thumbWidth, thumbHeight);
             ctx.restore();
 
+            // 边框
             ctx.strokeStyle = "#210F16";
             ctx.lineWidth = 1;
             ctx.strokeRect(x, y, thumbWidth, thumbHeight);
 
+            // 时间戳
             const timestamp = parseTimestamp(name);
             if (timestamp) {
-              ctx.font = "bold 30px sans-serif";
-              ctx.textAlign = "center";
+              // 动态计算字体大小：缩略图宽高较小的一项决定字号
+              const base = Math.min(thumbWidth, thumbHeight);
+              const fontSize = Math.max(12, Math.floor(base * 0.1)); // 12% 高度或宽度，最小12px
+
+              ctx.font = `bold ${fontSize}px sans-serif`;
+              ctx.textAlign = "right";
               ctx.textBaseline = "bottom";
-              const textX = x + thumbWidth - 120;
+
+              const textX = x + thumbWidth - 20; // 靠右侧
               const textY = y + thumbHeight - 20;
 
-              ctx.lineWidth = 4;
+              ctx.lineWidth = Math.max(2, fontSize / 8);
               ctx.strokeStyle = "white";
               ctx.strokeText(timestamp, textX, textY);
 
@@ -147,8 +167,9 @@
             }
 
             x += thumbWidth + gap;
+            idx++;
           }
-          y += thumbHeight + gap;
+          y += avgThumbHeight + gap;
         }
       }
 
